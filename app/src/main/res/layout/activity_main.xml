@@ -9,8 +9,34 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="au.edu.unsw.eet.attendance.MainActivity">
 
-    <TextView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:text="Server Start"
+        android:id="@+id/server_start_button"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Server Stop"
+        android:id="@+id/server_stop_button"
+        android:layout_below="@+id/server_start_button"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Client Start"
+        android:id="@+id/client_start_button"
+        android:layout_below="@+id/server_stop_button"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Client Stop"
+        android:id="@+id/client_stop_button"
+        android:layout_below="@+id/client_start_button"
+        android:layout_alignParentStart="true" />
 </RelativeLayout>
