@@ -40,8 +40,6 @@ public class P2pDiscoveryService extends P2pService {
 
     static final int MAX_RETRY = 20;
 
-    P2pDiscoveryService p2pDiscoveryService = this;
-
     WifiP2pDnsSdServiceRequest mServiceRequest;
 
     /**
@@ -84,7 +82,6 @@ public class P2pDiscoveryService extends P2pService {
      * Visible network SSIDs
      */
     List<ScanResult> mWifiScanResult;
-
 
     /**
      * Saved network id
@@ -169,7 +166,7 @@ public class P2pDiscoveryService extends P2pService {
                         Log.v(TAG, "SSID is " + wifiInfo.getSSID());
 
                     if (i > MAX_RETRY) {
-                        p2pDiscoveryService.stopSelf();
+                        p2pService.stopSelf();
                         throw new NetworkErrorException("Cannot obtain valid SSID for connected network");
                     }
 
@@ -204,6 +201,8 @@ public class P2pDiscoveryService extends P2pService {
 
                     Log.i(TAG, "Registered Device!");
                     out.println("Registered Device!");
+
+                    sendMessage("Registered: " + mDeviceRegistering + " with SSID: " + wifiInfo.getSSID());
 
                     // Close socket
                     clientSocket.close();
@@ -246,7 +245,7 @@ public class P2pDiscoveryService extends P2pService {
                 }
             } catch (InterruptedException e) {
                 Log.e(TAG, "mWifiScanThread Interrupted");
-                p2pDiscoveryService.stopSelf();
+                p2pService.stopSelf();
             }
         }
 
@@ -255,7 +254,7 @@ public class P2pDiscoveryService extends P2pService {
                 Log.i(TAG, "Wifi Scan Started.");
             } else {
                 Log.e(TAG, "Wifi Scan Could not Start.");
-                p2pDiscoveryService.stopSelf();
+                p2pService.stopSelf();
             }
         }
     };
@@ -281,7 +280,6 @@ public class P2pDiscoveryService extends P2pService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.v(TAG, "onStartCommand()");
-        safeServiceDiscovery();
 
         if (!mWifiScanThread.isAlive()) {
             mWifiScanThread.start();
@@ -371,7 +369,7 @@ public class P2pDiscoveryService extends P2pService {
             public void onFailure(int code) {
                 // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
                 Log.e(TAG, "addServiceRequest Failure " + code);
-                p2pDiscoveryService.stopSelf();
+                p2pService.stopSelf();
             }
         });
     }
@@ -387,7 +385,7 @@ public class P2pDiscoveryService extends P2pService {
             public void onFailure(int code) {
                 // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
                 Log.e(TAG, "discoverServices Failure " + code);
-                p2pDiscoveryService.stopSelf();
+                p2pService.stopSelf();
             }
         });
     }
@@ -445,7 +443,7 @@ public class P2pDiscoveryService extends P2pService {
 
         } else {
             Log.e(TAG, "Could not add network configuration.");
-            p2pDiscoveryService.stopSelf();
+            p2pService.stopSelf();
         }
 
         return networkId != -1;

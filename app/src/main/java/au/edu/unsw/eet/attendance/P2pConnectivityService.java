@@ -24,11 +24,6 @@ public class P2pConnectivityService extends P2pService {
     static final String TAG = P2pConnectivityService.class.getSimpleName();
 
     /**
-     * A reference to the current service - for use in nested classes
-     */
-    final P2pConnectivityService p2pConnectivityService = this;
-
-    /**
      * ServiceInfo object for the local service the application is providing
      */
     WifiP2pDnsSdServiceInfo mServiceInfo;
@@ -115,6 +110,8 @@ public class P2pConnectivityService extends P2pService {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(in));
                     String line = reader.readLine();
                     Log.i(TAG, "InputStream: " + line);
+
+                    sendMessage("Device Registered!");
 
                     mSocket.close();
                 } catch (IOException e) {

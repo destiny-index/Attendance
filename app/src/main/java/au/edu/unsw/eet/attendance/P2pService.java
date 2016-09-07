@@ -5,10 +5,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.widget.Toast;
 
 public class P2pService extends Service {
     // Refactor-safe TAG for Logcat
@@ -62,6 +65,8 @@ public class P2pService extends Service {
      */
     @Override
     public void onCreate() {
+        Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show();
+
         super.onCreate();
 
         Log.v(TAG, "onCreate()");
@@ -86,7 +91,6 @@ public class P2pService extends Service {
                 p2pService.stopSelf();
             }
         });
-
     }
 
     @Override
@@ -108,6 +112,7 @@ public class P2pService extends Service {
 
         super.onDestroy();
 
+        Toast.makeText(this, "Service Destroyed", Toast.LENGTH_SHORT).show();
         // TODO: Broadcast that the service has stopped
     }
 
@@ -116,4 +121,20 @@ public class P2pService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    /**********************************************************************************************
+     * Local Broadcast Message
+     **********************************************************************************************/
+
+    public static final String BROADCAST_MESSAGE_ACTION = P2pService.class.getName() + "BROADCAST_MESSAGE_ACTION";
+    public static final String BROADCAST_MESSAGE_EXTRA = P2pService.class.getName() + "BROADCAST_MESSAGE_EXTRA";
+
+    void sendMessage(String message) {
+        Log.v(TAG, "Broadcasting: " + message);
+        Intent intent = new Intent(BROADCAST_MESSAGE_ACTION);
+        intent.putExtra(BROADCAST_MESSAGE_EXTRA, message);
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
 }
