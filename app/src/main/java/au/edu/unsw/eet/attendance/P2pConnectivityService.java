@@ -64,7 +64,7 @@ public class P2pConnectivityService extends P2pService {
     Thread mSocketListener = new Thread() {
         @Override
         public void run() {
-            Log.v(TAG, "SocketListener run()");
+            Log.i(TAG, "SocketListener run()");
 
             // Ensure we have a server socket from which to spawn client sockets
             if (mServerSocket != null) {
@@ -158,13 +158,13 @@ public class P2pConnectivityService extends P2pService {
         mWifiP2pManager.removeGroup(mWifiP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.i(TAG, "P2P group removed successfully.");
+                Log.i(TAG, "removeGroup Success");
             }
 
             @Override
             public void onFailure(int reason) {
                 // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                Log.e(TAG, String.format("P2P group not removed. Error code %d.", reason));
+                Log.e(TAG, String.format("removeGroup Failure %d", reason));
             }
         });
 
@@ -173,13 +173,13 @@ public class P2pConnectivityService extends P2pService {
             mWifiP2pManager.removeLocalService(mWifiP2pChannel, mServiceInfo, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    Log.i(TAG, "Local service removed successfully.");
+                    Log.i(TAG, "removeLocalService Success");
                 }
 
                 @Override
                 public void onFailure(int reason) {
                     // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                    Log.e(TAG, String.format("Local service not removed. Error code %d.", reason));
+                    Log.e(TAG, String.format("removeLocalService Failure %d", reason));
                 }
             });
         }
@@ -219,45 +219,39 @@ public class P2pConnectivityService extends P2pService {
         mWifiP2pManager.createGroup(mWifiP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.i(TAG, "P2p Group Created Successfully.");
-                new CountDownTimer(3000,1000) {
-                    @Override
-                    public void onFinish() {
-                        connectionInfoQuery();
-                    }
-
-                    @Override
-                    public void onTick(long millisUntilFinished) {
-                        Log.v(TAG, "Time remaining: " + millisUntilFinished);
-                    }
-                }.start();
+                Log.i(TAG, "createGroup Success");
+                connectionInfoQuery();
             }
 
             @Override
             public void onFailure(int reason) {
-                Log.i(TAG, String.format("P2p Group Creation Failed. Error code %d.", reason));
+                Log.i(TAG, String.format("createGroup Failure %d", reason));
             }
         });
     }
 
-    /**
-     * Obtain the device's network ssid/pass and ip-address
-     */
-    private void connectionInfoQuery() {
+    private void requestGroupInfo() {
         mWifiP2pManager.requestGroupInfo(mWifiP2pChannel, new WifiP2pManager.GroupInfoListener() {
             @Override
             public void onGroupInfoAvailable(WifiP2pGroup group) {
                 try {
                     mNetworkName = group.getNetworkName();
                     mPassphrase = group.getPassphrase();
+
                     openServerSocket(); // Will only run if mNetworkName, mPassphrase, and mHostAddress are set
                 } catch (NullPointerException e) {
+                    mNetworkName = null;
+                    mPassphrase = null;
+
                     // p2p framework gave a bad WifiP2pGroup object so retry
-                    connectionInfoQuery();
+                    Log.i(TAG, "Retrying requestGroupInfo");
+                    requestGroupInfo();
                 }
             }
         });
+    }
 
+    private void requestConnectionInfo() {
         mWifiP2pManager.requestConnectionInfo(mWifiP2pChannel, new WifiP2pManager.ConnectionInfoListener() {
             @Override
             public void onConnectionInfoAvailable(WifiP2pInfo info) {
@@ -267,11 +261,22 @@ public class P2pConnectivityService extends P2pService {
 
                     openServerSocket(); // Will only run if mNetworkName, mPassphrase, and mHostAddress are set
                 } catch (NullPointerException e) {
+                    mHostAddress = null;
+
                     // p2p framework gave a bad WifiP2pInfo object so retry
-                    connectionInfoQuery();
+                    requestConnectionInfo();
                 }
             }
         });
+    }
+
+    /**
+     * Obtain the device's network ssid/pass and ip-address
+     */
+    private void connectionInfoQuery() {
+        requestGroupInfo();
+
+        requestConnectionInfo();
     }
 
     private void openServerSocket() {
@@ -302,6 +307,7 @@ public class P2pConnectivityService extends P2pService {
             } catch (IOException e) {
                 // Could not start server
                 e.printStackTrace();
+                this.stopSelf();
             }
         }
     }
@@ -334,13 +340,13 @@ public class P2pConnectivityService extends P2pService {
         mWifiP2pManager.addLocalService(mWifiP2pChannel, mServiceInfo, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.i(TAG, "Local service added successfully.");
+                Log.i(TAG, "addLocalService Success");
             }
 
             @Override
             public void onFailure(int reason) {
                 // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                Log.e(TAG, String.format("Local service not added. Error code %d.", reason));
+                Log.e(TAG, String.format("addLocalService Failure %d", reason));
             }
         });
     }

@@ -50,16 +50,12 @@ public class P2pService extends Service {
                     Log.v(TAG, "WifiP2p is enabled.");
                 } else {
                     // WifiP2p is disabled
-                    Log.v(TAG, "WifiP2p is not enabled.");
+                    Log.e(TAG, "WifiP2p is disabled.");
+                    p2pService.stopSelf();
                 }
             }
-
-            onBroadcastReceive(context, intent);
         }
     };
-
-    public void onBroadcastReceive(Context context, Intent intent) {
-    }
 
     /**
      * Set up the service by registering broadcast receivers and initializing WifiP2p Channel
@@ -72,9 +68,11 @@ public class P2pService extends Service {
 
         // Create intent filters for broadcast receivers
         IntentFilter p2pIntentFilter = new IntentFilter(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        /*
         p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         p2pIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+        */
 
         // Register Broadcast Receivers
         this.registerReceiver(p2pBroadcastReceiver, p2pIntentFilter);
@@ -84,7 +82,8 @@ public class P2pService extends Service {
         mWifiP2pChannel = mWifiP2pManager.initialize(this, this.getMainLooper(), new WifiP2pManager.ChannelListener() {
             @Override
             public void onChannelDisconnected() {
-                Log.w(TAG, "WifiP2p Framework Connection Lost.");
+                Log.e(TAG, "onChannelDisconnected() : The channel to the WifiP2p framework has been disconnected.");
+                p2pService.stopSelf();
             }
         });
 
@@ -108,6 +107,8 @@ public class P2pService extends Service {
         this.unregisterReceiver(p2pBroadcastReceiver);
 
         super.onDestroy();
+
+        // TODO: Broadcast that the service has stopped
     }
 
     @Nullable
