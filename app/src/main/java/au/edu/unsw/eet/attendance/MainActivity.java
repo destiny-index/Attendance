@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
             final TextView messageView = (TextView) findViewById(R.id.text_view);
             final ScrollView messageContainer = (ScrollView) findViewById(R.id.scroll_view);
 
-            messageView.append(message);
+            messageView.append(message + "\n");
             messageContainer.post(new Runnable() {
                 public void run() {
                     messageContainer.smoothScrollTo(0, messageView.getBottom());
