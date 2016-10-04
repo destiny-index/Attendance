@@ -1,15 +1,18 @@
 package au.edu.unsw.eet.attendance;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -17,12 +20,30 @@ public class P2pService extends Service {
     // Refactor-safe TAG for Logcat
     static final String TAG = P2pService.class.getSimpleName();
 
-    P2pService p2pService = this;
+    public final P2pService mService = this;
 
-    static final String RECORD_SSID = "ssid";
-    static final String RECORD_PRESHARED_KEY = "passphrase";
-    static final String RECORD_SERVER_PORT = "listenport";
-    static final String RECORD_SERVER_ADDRESS = "host";
+    public static final String RECORD_SSID = "ssid";
+    public static final String RECORD_PRESHARED_KEY = "passphrase";
+    public static final String RECORD_SERVER_PORT = "listenport";
+    public static final String RECORD_SERVER_ADDRESS = "host";
+
+    public static final String DATABASE_NAME = "attendance";
+
+    public static final String STUDENT_MESSAGE_PREFIX = "Student:";
+    public static final String INSTRUCTOR_MESSAGE_PREFIX = "Instructor:";
+
+    /**
+     * String ID used to identify the ID of the user
+     */
+    public static final String HUMAN_READABLE_ID = "HUMAN_READABLE_ID";
+    String mHumanReadableId;
+
+    /**
+     * Notification
+     */
+    int mNotificationId = 0;
+    NotificationCompat.Builder mBuilder;
+    NotificationManager mNotificationManager;
 
     /**
      * Manager for WifiP2p system service
@@ -54,7 +75,7 @@ public class P2pService extends Service {
                 } else {
                     // WifiP2p is disabled
                     Log.e(TAG, "WifiP2p is disabled.");
-                    p2pService.stopSelf();
+                    mService.stopSelf();
                 }
             }
         }
@@ -65,11 +86,29 @@ public class P2pService extends Service {
      */
     @Override
     public void onCreate() {
-        Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show();
-
         super.onCreate();
 
+        Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show();
         Log.v(TAG, "onCreate()");
+
+        mBuilder = new NotificationCompat.Builder(this);
+        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        mBuilder.setSmallIcon(R.drawable.ic_settings_input_antenna_white_24dp);
+        mBuilder.setContentTitle("Attendance Running");
+        mBuilder.setContentText("A background service is running.");
+
+        Notification notification;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            notification = mBuilder.build();
+        } else {
+            notification = mBuilder.getNotification();
+        }
+
+        notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
+
+        // notificationID allows you to update the notification later on.
+        mNotificationManager.notify(mNotificationId, notification);
 
         // Create intent filters for broadcast receivers
         IntentFilter p2pIntentFilter = new IntentFilter(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
@@ -88,7 +127,7 @@ public class P2pService extends Service {
             @Override
             public void onChannelDisconnected() {
                 Log.e(TAG, "onChannelDisconnected() : The channel to the WifiP2p framework has been disconnected.");
-                p2pService.stopSelf();
+                mService.stopSelf();
             }
         });
     }
@@ -96,6 +135,10 @@ public class P2pService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.v(TAG, "onStartCommand()");
+
+        // Load args
+        this.mHumanReadableId = intent.getStringExtra(HUMAN_READABLE_ID);
+        Log.i(TAG, mHumanReadableId);
 
         return START_NOT_STICKY;
     }
@@ -110,10 +153,12 @@ public class P2pService extends Service {
         // Unregister Broadcast Receivers
         this.unregisterReceiver(p2pBroadcastReceiver);
 
-        super.onDestroy();
+        // Cancel notification
+        mNotificationManager.cancel(mNotificationId);
 
         Toast.makeText(this, "Service Destroyed", Toast.LENGTH_SHORT).show();
-        // TODO: Broadcast that the service has stopped
+
+        super.onDestroy();
     }
 
     @Nullable

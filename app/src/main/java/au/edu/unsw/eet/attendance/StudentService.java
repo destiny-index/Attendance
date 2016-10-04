@@ -1,27 +1,30 @@
 package au.edu.unsw.eet.attendance;
 
 import android.content.Intent;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
-import android.os.CountDownTimer;
+import android.os.Vibrator;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class P2pConnectivityService extends P2pService {
+public class StudentService extends P2pService {
     // Refactor-safe TAG for Logcat
-    static final String TAG = P2pConnectivityService.class.getSimpleName();
+    static final String TAG = StudentService.class.getSimpleName();
 
     /**
      * ServiceInfo object for the local service the application is providing
@@ -104,23 +107,69 @@ public class P2pConnectivityService extends P2pService {
             // Ensure we have a socket to read from
             if (mSocket != null) {
                 try {
-                    InputStream in = mSocket.getInputStream();
-                    OutputStream out = mSocket.getOutputStream();
+                    BufferedReader in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
+                    PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(mSocket.getOutputStream())), true);
 
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                    String line = reader.readLine();
-                    Log.i(TAG, "InputStream: " + line);
+                    String inputMessage = in.readLine();
+                    Log.i(TAG, "InputStream: " + inputMessage);
+                    sendMessage(inputMessage);
 
-                    sendMessage("Device Registered!");
+                    String outputMessage = STUDENT_MESSAGE_PREFIX + mHumanReadableId;
+                    Log.i(TAG, "OutputStream: " + outputMessage);
+                    out.println(outputMessage);
+
+                    // Add the current student to the database
+                    if (inputMessage.contains(INSTRUCTOR_MESSAGE_PREFIX)) {
+                        SQLiteDatabase database = null;
+                        try {
+                            database = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
+                            String sql = null;
+
+                            String[] inputStrings = inputMessage.split(":");
+                            String instructorId = inputStrings[1];
+                            int rand = Integer.parseInt(inputStrings[2]);
+
+                            // Store the random number received and the current timestamp
+                            sql = String.format(
+                                    "CREATE TABLE IF NOT EXISTS %s_student(rand INT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
+                                    instructorId);
+                            database.execSQL(sql);
+
+                            sql = String.format(
+                                    "INSERT INTO %s_student (rand) VALUES(%d);",
+                                    instructorId,
+                                    rand);
+                            database.execSQL(sql);
+                            Log.i(TAG, sql);
+
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        } finally {
+                            if (database != null)
+                                database.close();
+                        }
+
+                        // vibration for 800 milliseconds
+                        ((Vibrator)getSystemService(VIBRATOR_SERVICE)).vibrate(800);
+                    }
 
                     mSocket.close();
                 } catch (IOException e) {
                     Log.e(TAG, "Client socket thread died unexpectedly.");
                     e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+            } else {
+                Log.e(TAG, "mSocket null");
+                mService.stopSelf();
             }
         }
     }
+
+    /**********************************************************************************************
+     * Service Lifecycle Methods
+     **********************************************************************************************/
 
     /**
      * Set up the service by registering broadcast receivers, setting up a student-side server
@@ -135,7 +184,7 @@ public class P2pConnectivityService extends P2pService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.v(TAG, "onStartCommand()");
+        super.onStartCommand(intent, flags, startId);
 
         return START_NOT_STICKY;
     }
@@ -150,57 +199,9 @@ public class P2pConnectivityService extends P2pService {
         super.onDestroy();
     }
 
-    private void studentServerShutdown() {
-        // Remove p2p group
-        mWifiP2pManager.removeGroup(mWifiP2pChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.i(TAG, "removeGroup Success");
-            }
-
-            @Override
-            public void onFailure(int reason) {
-                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                Log.e(TAG, String.format("removeGroup Failure %d", reason));
-            }
-        });
-
-        // Unregister Local Service
-        if (mServiceInfo != null) {
-            mWifiP2pManager.removeLocalService(mWifiP2pChannel, mServiceInfo, new WifiP2pManager.ActionListener() {
-                @Override
-                public void onSuccess() {
-                    Log.i(TAG, "removeLocalService Success");
-                }
-
-                @Override
-                public void onFailure(int reason) {
-                    // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                    Log.e(TAG, String.format("removeLocalService Failure %d", reason));
-                }
-            });
-        }
-
-        // Close server socket
-        try {
-            if (mServerSocket != null) {
-                mServerSocket.close();
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Server socket could not be closed");
-        }
-
-        // Close mSocketListener
-        if (mSocketListener != null && mSocketListener.isAlive()) {
-            mSocketListener.interrupt();
-            try {
-                mSocketListener.join();
-            } catch (InterruptedException e) {
-                /* Main thread should not be interrupted */
-                e.printStackTrace();
-            }
-        }
-    }
+    /**********************************************************************************************
+     * P2P Group and Server Socket
+     **********************************************************************************************/
 
     /**
      * Setup the student-side server and advertise it over p2p service discovery
@@ -222,7 +223,8 @@ public class P2pConnectivityService extends P2pService {
 
             @Override
             public void onFailure(int reason) {
-                Log.i(TAG, String.format("createGroup Failure %d", reason));
+                Log.e(TAG, String.format("createGroup Failure %d", reason));
+                mService.stopSelf();
             }
         });
     }
@@ -346,5 +348,57 @@ public class P2pConnectivityService extends P2pService {
                 Log.e(TAG, String.format("addLocalService Failure %d", reason));
             }
         });
+    }
+
+    private void studentServerShutdown() {
+        // Remove p2p group
+        mWifiP2pManager.removeGroup(mWifiP2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.i(TAG, "removeGroup Success");
+            }
+
+            @Override
+            public void onFailure(int reason) {
+                // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                Log.e(TAG, String.format("removeGroup Failure %d", reason));
+            }
+        });
+
+        // Unregister Local Service
+        if (mServiceInfo != null) {
+            mWifiP2pManager.removeLocalService(mWifiP2pChannel, mServiceInfo, new WifiP2pManager.ActionListener() {
+                @Override
+                public void onSuccess() {
+                    Log.i(TAG, "removeLocalService Success");
+                }
+
+                @Override
+                public void onFailure(int reason) {
+                    // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                    Log.e(TAG, String.format("removeLocalService Failure %d", reason));
+                }
+            });
+        }
+
+        // Close server socket
+        try {
+            if (mServerSocket != null) {
+                mServerSocket.close();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Server socket could not be closed");
+        }
+
+        // Close mSocketListener
+        if (mSocketListener != null && mSocketListener.isAlive()) {
+            mSocketListener.interrupt();
+            try {
+                mSocketListener.join();
+            } catch (InterruptedException e) {
+                /* Main thread should not be interrupted */
+                e.printStackTrace();
+            }
+        }
     }
 }
