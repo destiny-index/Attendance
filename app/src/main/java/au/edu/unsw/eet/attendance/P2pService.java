@@ -41,7 +41,7 @@ public class P2pService extends Service {
     /**
      * Notification
      */
-    int mNotificationId = 0;
+    int mNotificationId = 10;
     NotificationCompat.Builder mBuilder;
     NotificationManager mNotificationManager;
 
@@ -108,7 +108,8 @@ public class P2pService extends Service {
         notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
 
         // notificationID allows you to update the notification later on.
-        mNotificationManager.notify(mNotificationId, notification);
+        // mNotificationManager.notify(mNotificationId, notification);
+        startForeground(mNotificationId, notification);
 
         // Create intent filters for broadcast receivers
         IntentFilter p2pIntentFilter = new IntentFilter(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
@@ -154,7 +155,8 @@ public class P2pService extends Service {
         this.unregisterReceiver(p2pBroadcastReceiver);
 
         // Cancel notification
-        mNotificationManager.cancel(mNotificationId);
+        // mNotificationManager.cancel(mNotificationId);
+        stopForeground(true);
 
         Toast.makeText(this, "Service Destroyed", Toast.LENGTH_SHORT).show();
 

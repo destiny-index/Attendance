@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="10dip">
+
+    <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/list_item_instructor"
+        android:layout_width="0dp"
+        android:layout_weight="0.25"
+        android:layout_height="fill_parent"
+        android:padding="4dp"></TextView>
+    <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/list_item_student"
+        android:layout_width="0dp"
+        android:layout_weight="0.25"
+        android:layout_height="fill_parent"
+        android:padding="4dp"></TextView>
+    <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/list_item_datetime"
+        android:layout_width="0dp"
+        android:layout_weight="0.5"
+        android:layout_height="fill_parent"
+        android:padding="4dp"></TextView>
+</LinearLayout>

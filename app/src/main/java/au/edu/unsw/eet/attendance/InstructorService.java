@@ -175,7 +175,6 @@ public class InstructorService extends P2pService {
 
                     String inputMessage = in.readLine();
                     Log.i(TAG, "InputStream: " + inputMessage);
-                    sendMessage(inputMessage);
 
                     // Add the current student to the database
                     if (inputMessage.contains(STUDENT_MESSAGE_PREFIX)) {
@@ -185,13 +184,18 @@ public class InstructorService extends P2pService {
                             String sql = null;
 
                             // Store the student's deviceId, student ID, random number and current timestamp
-                            sql = String.format(
-                                    "CREATE TABLE IF NOT EXISTS %s_instructor(device VARCHAR, student_id VARCHAR, rand INT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
-                                    mService.mHumanReadableId);
+                            sql = "CREATE TABLE IF NOT EXISTS instructor_attendance(" +
+                                    "instructor_id VARCHAR, " +
+                                    "student_device VARCHAR, " +
+                                    "student_id VARCHAR, " +
+                                    "rand INT, " +
+                                    "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);";
                             database.execSQL(sql);
 
                             sql = String.format(
-                                    "INSERT INTO %s_instructor (device, student_id, rand) VALUES('%s', '%s', %d);",
+                                    "INSERT INTO instructor_attendance " +
+                                            "(instructor_id, student_device, student_id, rand) " +
+                                            "VALUES('%s', '%s', '%s', %d);",
                                     mService.mHumanReadableId,
                                     mDeviceRegistering,
                                     inputMessage.split(":")[1],
@@ -206,6 +210,7 @@ public class InstructorService extends P2pService {
                                 database.close();
                         }
                     }
+                    sendMessage(inputMessage); // send message to trigger listView update
 
                     // Close socket
                     mSocket.close();

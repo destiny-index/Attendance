@@ -112,7 +112,6 @@ public class StudentService extends P2pService {
 
                     String inputMessage = in.readLine();
                     Log.i(TAG, "InputStream: " + inputMessage);
-                    sendMessage(inputMessage);
 
                     String outputMessage = STUDENT_MESSAGE_PREFIX + mHumanReadableId;
                     Log.i(TAG, "OutputStream: " + outputMessage);
@@ -127,16 +126,20 @@ public class StudentService extends P2pService {
 
                             String[] inputStrings = inputMessage.split(":");
                             String instructorId = inputStrings[1];
+                            String studentId = mHumanReadableId;
                             int rand = Integer.parseInt(inputStrings[2]);
 
                             // Store the random number received and the current timestamp
-                            sql = String.format(
-                                    "CREATE TABLE IF NOT EXISTS %s_student(rand INT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
-                                    instructorId);
+                            sql = "CREATE TABLE IF NOT EXISTS student_attendance(" +
+                                    "student_id VARCHAR, " +
+                                    "instructor_id VARCHAR, " +
+                                    "rand INT, " +
+                                    "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);";
                             database.execSQL(sql);
 
                             sql = String.format(
-                                    "INSERT INTO %s_student (rand) VALUES(%d);",
+                                    "INSERT INTO student_attendance (student_id, instructor_id, rand) VALUES('%s', '%s', %d);",
+                                    studentId,
                                     instructorId,
                                     rand);
                             database.execSQL(sql);
@@ -150,8 +153,10 @@ public class StudentService extends P2pService {
                         }
 
                         // vibration for 800 milliseconds
-                        ((Vibrator)getSystemService(VIBRATOR_SERVICE)).vibrate(800);
+                        ((Vibrator) getSystemService(VIBRATOR_SERVICE)).vibrate(800);
                     }
+
+                    sendMessage(inputMessage); // send message to trigger list update
 
                     mSocket.close();
                 } catch (IOException e) {
